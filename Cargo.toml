@@ -1,0 +1,11 @@
+[package]
+name = "pdfermisc"
+version = "0.0.1"
+edition = "2024"
+
+[dependencies]
+egui = "0.36.0"
+eframe = "0.36.0"
+rfd = "0.17.2"
+pdf_oxide = "=0.3.22"
+
