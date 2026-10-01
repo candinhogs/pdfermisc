@@ -1,15 +1,16 @@
 use eframe::egui;
+use std::path::PathBuf;
 use pdf_oxide::editor::DocumentEditor;
 use pdf_oxide::editor::EditableDocument;
 
 struct Pdfermisc {
-    files_path: Vec::<String>,
+    files_path: Vec::<PathBuf>,
 }
 
 impl Default for Pdfermisc {
     fn default() -> Self {
         Self {
-            files_path: Vec::<String>::new(),
+            files_path: Vec::new(),
         }
     }
 }
@@ -25,31 +26,27 @@ impl eframe::App for Pdfermisc {
                 });
             });
             ui.horizontal(|ui| {
-                // For some reason, some files turn to criptic text.
-                // explore more about this.
                 if ui.button("Merge Listed PDF").clicked() {
-                    if !self.files_path.is_empty() {
+                    if self.files_path.len() >= 2 {
                         match DocumentEditor::open(&self.files_path[0]) {
                             Ok(mut editor) => {
                                 let mut success = true;
 
                                 for file in &self.files_path[1..] {
                                     if let Err(err) = editor.merge_from(file) {
-                                        eprintln!("Error {}: {:?}", file, err);
+                                        eprintln!("Error merging {:?}: {:?}", file, err);
                                         success = false;
-                                        break;
                                     }
                                 }
 
                                 if success {
-                                    if let Err(err) = editor.save("merged.pdf") {
-                                        eprintln!("Error: {:?}", err);
-                                    } else {
-                                        println!("Success on 'merged.pdf'!");
+                                    match editor.save("merged.pdf") {
+                                        Ok(_) => println!("Success on 'merged.pdf'!"),
+                                        Err(err) => eprintln!("Save error: {:?}", err),
                                     }
                                 }
                             }
-                            Err(err) => eprintln!("Error: {:?}", err),
+                            Err(err) => eprintln!("Open error: {:?}", err),
                         }
                     }
                 }
@@ -64,15 +61,18 @@ impl eframe::App for Pdfermisc {
             ui.heading("Pdfermisc");
 
             if ui.button("Add PDF").clicked() {
-                if let Some(path) = rfd::FileDialog::new().pick_file() {
-                    if let Some(file) = path.to_str() {
-                        self.files_path.push(file.to_owned());
-                    }
+                if let Some(path) = rfd::FileDialog::new()
+                    .add_filter("PDF", &["pdf"])
+                    .pick_file()
+                {
+                    self.files_path.push(path);
                 }
             }
             // Probably not the best option;
             for file in &self.files_path {
-                ui.label(file);
+                if let Some(name) = file.file_name() {
+                    ui.label(name.to_string_lossy());
+                }
             }
         });
     }
