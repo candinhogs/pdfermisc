@@ -51,11 +51,26 @@ impl eframe::App for Pdfermisc {
                     }
                 }
                 if ui.button("Rotate Selected PDF").clicked() {
-                    todo!();
+                    match DocumentEditor::open(&self.files_path[0]) {
+                        Ok(mut editor) => {
+                            let mut success = true;
+                            if let Err(err) = editor.rotate_all_pages(180) {
+                                eprintln!("Error rotating pages {:?}: {:?}", &self.files_path[0], err);
+                                success = false;
+                            }
+                            if success {
+                                match editor.save("flipped.pdf") {
+                                    Ok(_) => println!("Success on 'flipped.pdf'!"),
+                                    Err(err) => eprintln!("Save error {:?}", err),
+                                }
+                            }
+                        }
+                        Err(err) => eprintln!("Open error: {:?}", err),
+                    }
                 }
             });
         });
-        
+
         egui::CentralPanel::default().show(ui, |ui| {
             ui.style_mut().override_text_style = Some(egui::TextStyle::Heading);
             ui.heading("Pdfermisc");
@@ -68,7 +83,6 @@ impl eframe::App for Pdfermisc {
                     self.files_path.push(path);
                 }
             }
-            // Probably not the best option;
             for file in &self.files_path {
                 if let Some(name) = file.file_name() {
                     ui.label(name.to_string_lossy());
