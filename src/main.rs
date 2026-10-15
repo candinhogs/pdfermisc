@@ -1,10 +1,13 @@
 use eframe::egui;
-use std::path::PathBuf;
+use pdf_oxide::api::Pdf;
 use pdf_oxide::editor::DocumentEditor;
 use pdf_oxide::editor::EditableDocument;
 
+use std::path::Path;
+use std::path::PathBuf;
+
 struct Pdfermisc {
-    files_path: Vec::<PathBuf>,
+    files_path: Vec<PathBuf>,
 }
 
 impl Default for Pdfermisc {
@@ -13,6 +16,23 @@ impl Default for Pdfermisc {
             files_path: Vec::new(),
         }
     }
+}
+
+fn merge_pdfs(files: &[PathBuf], output: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    if files.len() < 2 {
+        return Err("Select at least two pdf's to be merged".into());
+    }
+
+    let mut pdf = Pdf::from_text("")?;
+    pdf.save(output)?;
+
+    let mut editor = DocumentEditor::open(output)?;
+    for file in files {
+        editor.merge_from(file)?;
+    }
+
+    editor.save(output)?;
+    Ok(())
 }
 
 impl eframe::App for Pdfermisc {
@@ -27,27 +47,9 @@ impl eframe::App for Pdfermisc {
             });
             ui.horizontal(|ui| {
                 if ui.button("Merge Listed PDF").clicked() {
-                    if self.files_path.len() >= 2 {
-                        match DocumentEditor::open(&self.files_path[0]) {
-                            Ok(mut editor) => {
-                                let mut success = true;
-
-                                for file in &self.files_path[1..] {
-                                    if let Err(err) = editor.merge_from(file) {
-                                        eprintln!("Error merging {:?}: {:?}", file, err);
-                                        success = false;
-                                    }
-                                }
-
-                                if success {
-                                    match editor.save("merged.pdf") {
-                                        Ok(_) => println!("Success on 'merged.pdf'!"),
-                                        Err(err) => eprintln!("Save error: {:?}", err),
-                                    }
-                                }
-                            }
-                            Err(err) => eprintln!("Open error: {:?}", err),
-                        }
+                    match merge_pdfs(&self.files_path, std::path::Path::new("merged.pdf")) {
+                        Ok(()) => todo!(),
+                        Err(_err) => todo!(),
                     }
                 }
                 if ui.button("Rotate Selected PDF").clicked() {
@@ -55,7 +57,10 @@ impl eframe::App for Pdfermisc {
                         Ok(mut editor) => {
                             let mut success = true;
                             if let Err(err) = editor.rotate_all_pages(180) {
-                                eprintln!("Error rotating pages {:?}: {:?}", &self.files_path[0], err);
+                                eprintln!(
+                                    "Error rotating pages {:?}: {:?}",
+                                    &self.files_path[0], err
+                                );
                                 success = false;
                             }
                             if success {
